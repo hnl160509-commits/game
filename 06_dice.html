@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>골드 마이너 (Gold Miner)</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Pretendard', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .stat-item span {
+            color: #f1c40f;
+        }
+
+        #game-canvas {
+            border: 4px solid #5d4037;
+            border-radius: 8px;
+            background-color: #8d6e63;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            cursor: pointer;
+        }
+
+        .controls-info {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .modal {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .btn {
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #d35400;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>GOLD MINER</h1>
+        <div class="stats">
+            <div class="stat-item">점수: <span id="score">0</span></div>
+            <div class="stat-item">목표: <span id="target">600</span></div>
+            <div class="stat-item">시간: <span id="timer">45</span>s</div>
+            <div class="stat-item">단계: <span id="level">1</span></div>
+        </div>
+    </div>
+
+    <canvas id="game-canvas" width="600" height="400"></canvas>
+
+    <div class="controls-info">💡 <b>화면 클릭</b>, <b>스페이스바</b> 또는 <b>아래 방향키(↓)</b>로 갈고리를 던지세요!</div>
+
+    <div id="modal" class="modal">
+        <h2 id="modal-title" style="margin: 0; color: #f1c40f;">단계 성공!</h2>
+        <p id="modal-msg">목표 점수를 달성했습니다.</p>
+        <button class="btn" onclick="nextLevelOrReset()">다음 단계로</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        const scoreEl = document.getElementById('score');
+        const targetEl = document.getElementById('target');
+        const timerEl = document.getElementById('timer');
+        const levelEl = document.getElementById('level');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-msg');
+
+        // 게임 상태 변수
+        let score = 0;
+        let targetScore = 600;
+        let timeLeft = 45;
+        let level = 1;
+        let isGameOver = false;
+        let isLevelClear = false;
+        let timerInterval = null;
+
+        // 갈고리 설정
+        const hook = {
+            x: canvas.width / 2,
+            y: 50,
+            angle: 0,
+            angleSpeed: 0.03,
+            length: 30,
+            minLength: 30,
+            maxLength: 420,
+            state: 'swing', // 'swing', 'shoot', 'retract'
+            speed: 5,
+            caughtItem: null
+        };
+
+        // 광물 생성용 데이터
+        let items = [];
+
+        function initItems() {
+            items = [];
+            
+            // 금 (소/중/대)
+            const goldSpecs = [
+                { r: 12, val: 50, speed: 4, color: '#f1c40f', count: 3 },
+                { r: 20, val: 100, speed: 2.5, color: '#f39c12', count: 3 },
+                { r: 32, val: 250, speed: 1.2, color: '#d35400', count: 2 }
+            ];
+
+            // 돌 (무겁고 가치 적음)
+            const rockSpecs = [
+                { r: 18, val: 10, speed: 1.0, color: '#7f8c8d', count: 3 },
+                { r: 28, val: 20, speed: 0.6, color: '#95a5a6', count: 2 }
+            ];
+
+            // 다이아몬드 (작고 가볍고 매우 비쌈)
+            const diamondSpec = { r: 8, val: 400, speed: 5, color: '#00d2d3', count: 1 + Math.floor(level / 2) };
+
+            // 아이템 배치 헬퍼
+            const addItem = (spec) => {
+                let x, y, overlap;
+                do {
+                    overlap = false;
+                    x = spec.r + Math.random() * (canvas.width - spec.r * 2);
+                    y = 120 + spec.r + Math.random() * (canvas.height - 140 - spec.r * 2);
+
+                    for (let item of items) {
+                        const dist = Math.hypot(x - item.x, y - item.y);
+                        if (dist < spec.r + item.r + 10) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                } while (overlap);
+
+                items.push({ x, y, r: spec.r, val: spec.val, speed: spec.speed, color: spec.color });
+            };
+
+            goldSpecs.forEach(spec => { for(let i=0; i<spec.count; i++) addItem(spec); });
+            rockSpecs.forEach(spec => { for(let i=0; i<spec.count; i++) addItem(spec); });
+            for(let i=0; i<diamondSpec.count; i++) addItem(diamondSpec);
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!isGameOver && !isLevelClear) {
+                    timeLeft--;
+                    timerEl.innerText = timeLeft;
+
+                    if (timeLeft <= 0) {
+                        checkStageResult();
+                    }
+                }
+            }, 1000);
+        }
+
+        function shootHook() {
+            if (hook.state === 'swing' && !isGameOver && !isLevelClear) {
+                hook.state = 'shoot';
+            }
+        }
+
+        function updateHook() {
+            if (hook.state === 'swing') {
+                hook.angle += hook.angleSpeed;
+                if (hook.angle > Math.PI / 2.5 || hook.angle < -Math.PI / 2.5) {
+                    hook.angleSpeed *= -1;
+                }
+            } else if (hook.state === 'shoot') {
+                hook.length += hook.speed;
+                const hookX = hook.x + Math.sin(hook.angle) * hook.length;
+                const hookY = hook.y + Math.cos(hook.angle) * hook.length;
+
+                // 벽/바닥 충돌 처리
+                if (hookX < 0 || hookX > canvas.width || hookY > canvas.height) {
+                    hook.state = 'retract';
+                }
+
+                // 아이템 잡기 체크
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    const dist = Math.hypot(hookX - item.x, hookY - item.y);
+                    if (dist < item.r) {
+                        hook.caughtItem = item;
+                        items.splice(i, 1);
+                        hook.state = 'retract';
+                        break;
+                    }
+                }
+
+                if (hook.length >= hook.maxLength) {
+                    hook.state = 'retract';
+                }
+            } else if (hook.state === 'retract') {
+                let currentSpeed = hook.speed;
+                if (hook.caughtItem) {
+                    currentSpeed = hook.caughtItem.speed;
+                }
+
+                hook.length -= currentSpeed;
+
+                if (hook.caughtItem) {
+                    hook.caughtItem.x = hook.x + Math.sin(hook.angle) * hook.length;
+                    hook.caughtItem.y = hook.y + Math.cos(hook.angle) * hook.length;
+                }
+
+                if (hook.length <= hook.minLength) {
+                    hook.length = hook.minLength;
+                    hook.state = 'swing';
+
+                    if (hook.caughtItem) {
+                        score += hook.caughtItem.val;
+                        scoreEl.innerText = score;
+                        hook.caughtItem = null;
+
+                        // 타겟 점수 조기 달성 체크는 시간 종료 시 일괄 평가
+                    }
+                }
+            }
+        }
+
+        function drawBackground() {
+            // 상단 광부 영역
+            ctx.fillStyle = '#6D4C41';
+            ctx.fillRect(0, 0, canvas.width, 60);
+
+            // 지하 영역
+            ctx.fillStyle = '#4E342E';
+            ctx.fillRect(0, 60, canvas.width, canvas.height - 60);
+
+            // 광부 그리기
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(hook.x - 15, 20, 30, 30);
+            ctx.fillStyle = '#e74c3c'; // 모자
+            ctx.fillRect(hook.x - 18, 15, 36, 8);
+        }
+
+        function drawItems() {
+            items.forEach(item => {
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+                ctx.fillStyle = item.color;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#2d3436';
+                ctx.stroke();
+
+                // 다이아몬드 반짝임 효과
+                if (item.val >= 400) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(item.x - item.r / 3, item.y - item.r / 3, item.r / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // 잡힌 아이템 그리기
+            if (hook.caughtItem) {
+                const item = hook.caughtItem;
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+                ctx.fillStyle = item.color;
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        function drawHook() {
+            const endX = hook.x + Math.sin(hook.angle) * hook.length;
+            const endY = hook.y + Math.cos(hook.angle) * hook.length;
+
+            // 로프 그리기
+            ctx.beginPath();
+            ctx.moveTo(hook.x, hook.y);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = '#d2dae2';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 갈고리 고리 그리기
+            ctx.save();
+            ctx.translate(endX, endY);
+            ctx.rotate(-hook.angle);
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#d2dae2';
+            ctx.lineWidth = 3;
+            ctx.arc(-6, 8, 6, 0, Math.PI);
+            ctx.arc(6, 8, 6, 0, Math.PI);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function checkStageResult() {
+            if (score >= targetScore) {
+                isLevelClear = true;
+                modalTitle.innerText = "단계 성공! 🎉";
+                modalMsg.innerText = `축하합니다! 목표 점수(${targetScore})를 달성했습니다.`;
+                modal.querySelector('button').innerText = "다음 단계로";
+            } else {
+                isGameOver = true;
+                modalTitle.innerText = "게임 오버! 💥";
+                modalMsg.innerText = `목표 점수에 도달하지 못했습니다. (최종 점수: ${score})`;
+                modal.querySelector('button').innerText = "처음부터 다시하기";
+            }
+            modal.style.display = 'flex';
+        }
+
+        function nextLevelOrReset() {
+            if (isGameOver) {
+                // 게임 리셋
+                score = 0;
+                level = 1;
+                targetScore = 600;
+            } else {
+                // 다음 레벨 진행
+                level++;
+                targetScore += 600 + (level * 200);
+            }
+
+            timeLeft = 45;
+            isGameOver = false;
+            isLevelClear = false;
+            
+            scoreEl.innerText = score;
+            targetEl.innerText = targetScore;
+            levelEl.innerText = level;
+            timerEl.innerText = timeLeft;
+
+            hook.length = hook.minLength;
+            hook.state = 'swing';
+            hook.caughtItem = null;
+
+            modal.style.display = 'none';
+            initItems();
+            startTimer();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackground();
+            drawItems();
+            updateHook();
+            drawHook();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 키보드 & 마우스/터치 조작 이벤트
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowDown') {
+                shootHook();
+            }
+        });
+
+        canvas.addEventListener('click', shootHook);
+
+        // 초기화 및 게임 시작
+        initItems();
+        startTimer();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

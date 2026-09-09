@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>버스 트래픽 제어 (Bus Traffic Controller)</title>
+    <style>
+        body {
+            background-color: #1e1e24;
+            color: #ffffff;
+            font-family: 'Pretendard', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .score-board {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2ecc71;
+            margin-top: 5px;
+        }
+
+        #game-canvas {
+            border: 4px solid #333;
+            border-radius: 12px;
+            background-color: #2d3436;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+
+        .info {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .game-over-modal {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .restart-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .restart-btn:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>BUS TRAFFIC CONTROL</h1>
+        <div class="score-board">통과한 버스: <span id="score">0</span></div>
+    </div>
+
+    <canvas id="game-canvas" width="500" height="500"></canvas>
+
+    <div class="info">💡 화면의 <b>신호등 버튼</b>을 클릭하여 버스를 멈추거나 출발시키세요!</div>
+
+    <div id="game-over" class="game-over-modal">
+        <h2 style="color: #e74c3c; margin: 0;">충돌 발생! (GAME OVER)</h2>
+        <p>안전하게 통과시킨 버스: <span id="final-score">0</span>대</p>
+        <button class="restart-btn" onclick="resetGame()">다시 도전</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const finalScoreElement = document.getElementById('final-score');
+        const gameOverModal = document.getElementById('game-over');
+
+        const ROAD_WIDTH = 60;
+        const CENTER = 250;
+        const STOP_LINE = 80; // 신호 대기선 위치 (교차로 중심 기준 거리)
+
+        // 신호등 상태 (true: 이동, false: 정지)
+        let lights = {
+            horizontal: true, // 가로 방향 (좌->우)
+            vertical: false    // 세로 방향 (위->아래)
+        };
+
+        let buses = [];
+        let score = 0;
+        let isGameOver = false;
+        let spawnTimer = 0;
+
+        // 버스 클래스
+        class Bus {
+            constructor(dir) {
+                this.dir = dir; // 'H' (Horizontal) or 'V' (Vertical)
+                this.width = dir === 'H' ? 36 : 20;
+                this.height = dir === 'H' ? 20 : 36;
+                this.speed = 2 + Math.random() * 1;
+
+                if (dir === 'H') {
+                    this.x = -this.width;
+                    this.y = CENTER - this.height / 2;
+                } else {
+                    this.x = CENTER - this.width / 2;
+                    this.y = -this.height;
+                }
+            }
+
+            update() {
+                // 신호등 정지선 체크
+                let shouldStop = false;
+
+                if (this.dir === 'H') {
+                    const isRed = !lights.horizontal;
+                    const atStopLine = (this.x + this.width >= CENTER - STOP_LINE) && (this.x < CENTER - STOP_LINE);
+                    if (isRed && atStopLine) shouldStop = true;
+                } else {
+                    const isRed = !lights.vertical;
+                    const atStopLine = (this.y + this.height >= CENTER - STOP_LINE) && (this.y < CENTER - STOP_LINE);
+                    if (isRed && atStopLine) shouldStop = true;
+                }
+
+                // 이동 처리
+                if (!shouldStop) {
+                    if (this.dir === 'H') this.x += this.speed;
+                    else this.y += this.speed;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.dir === 'H' ? '#f1c40f' : '#3498db'; // 가로 노랑, 세로 파랑 버스
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 창문 표현
+                ctx.fillStyle = '#ffffff';
+                if (this.dir === 'H') {
+                    ctx.fillRect(this.x + 5, this.y + 4, 8, 12);
+                    ctx.fillRect(this.x + 18, this.y + 4, 8, 12);
+                } else {
+                    ctx.fillRect(this.x + 4, this.y + 5, 12, 8);
+                    ctx.fillRect(this.x + 4, this.y + 18, 12, 8);
+                }
+            }
+
+            isOutOfBounds() {
+                return this.x > canvas.width || this.y > canvas.height;
+            }
+        }
+
+        function initGame() {
+            buses = [];
+            score = 0;
+            isGameOver = false;
+            lights.horizontal = true;
+            lights.vertical = false;
+            scoreElement.innerText = score;
+            gameOverModal.style.display = 'none';
+            spawnTimer = 0;
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnBus() {
+            spawnTimer++;
+            if (spawnTimer % 90 === 0) { // 약 1.5초마다 버스 생성
+                const dir = Math.random() > 0.5 ? 'H' : 'V';
+                buses.push(new Bus(dir));
+            }
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < buses.length; i++) {
+                for (let j = i + 1; j < buses.length; j++) {
+                    const b1 = buses[i];
+                    const b2 = buses[j];
+
+                    if (
+                        b1.x < b2.x + b2.width &&
+                        b1.x + b1.width > b2.x &&
+                        b1.y < b2.y + b2.height &&
+                        b1.y + b1.height > b2.y
+                    ) {
+                        return true; // 충돌 발생
+                    }
+                }
+            }
+            return false;
+        }
+
+        function drawRoads() {
+            ctx.fillStyle = '#636e72';
+            // 가로 도로
+            ctx.fillRect(0, CENTER - ROAD_WIDTH / 2, canvas.width, ROAD_WIDTH);
+            // 세로 도로
+            ctx.fillRect(CENTER - ROAD_WIDTH / 2, 0, ROAD_WIDTH, canvas.height);
+
+            // 점선 중앙선
+            ctx.strokeStyle = '#ffffff';
+            ctx.setLineDash([10, 10]);
+            ctx.lineWidth = 2;
+
+            // 가로 중앙선
+            ctx.beginPath();
+            ctx.moveTo(0, CENTER);
+            ctx.lineTo(canvas.width, CENTER);
+            ctx.stroke();
+
+            // 세로 중앙선
+            ctx.beginPath();
+            ctx.moveTo(CENTER, 0);
+            ctx.lineTo(CENTER, canvas.height);
+            ctx.stroke();
+
+            ctx.setLineDash([]); // 원래대로 복원
+
+            // 정지선 그리기
+            ctx.fillStyle = '#e74c3c';
+            // 가로 정지선
+            ctx.fillRect(CENTER - STOP_LINE, CENTER - ROAD_WIDTH / 2, 5, ROAD_WIDTH);
+            // 세로 정지선
+            ctx.fillRect(CENTER - ROAD_WIDTH / 2, CENTER - STOP_LINE, ROAD_WIDTH, 5);
+        }
+
+        function drawTrafficLights() {
+            // 가로 신호등 버튼 (왼쪽)
+            ctx.fillStyle = lights.horizontal ? '#2ecc71' : '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(CENTER - STOP_LINE - 20, CENTER - ROAD_WIDTH / 2 - 20, 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 세로 신호등 버튼 (위쪽)
+            ctx.fillStyle = lights.vertical ? '#2ecc71' : '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(CENTER - ROAD_WIDTH / 2 - 20, CENTER - STOP_LINE - 20, 15, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function gameLoop() {
+            if (isGameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawRoads();
+            drawTrafficLights();
+            spawnBus();
+
+            // 버스 업데이트 및 출력
+            for (let i = buses.length - 1; i >= 0; i--) {
+                const bus = buses[i];
+                bus.update();
+                bus.draw();
+
+                if (bus.isOutOfBounds()) {
+                    buses.splice(i, 1);
+                    score++;
+                    scoreElement.innerText = score;
+                }
+            }
+
+            // 충돌 확인
+            if (checkCollisions()) {
+                endGame();
+                return;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            isGameOver = true;
+            finalScoreElement.innerText = score;
+            gameOverModal.style.display = 'flex';
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        // 마우스 클릭으로 신호등 조절
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // 가로 신호등 클릭 위치
+            const hLightX = CENTER - STOP_LINE - 20;
+            const hLightY = CENTER - ROAD_WIDTH / 2 - 20;
+            
+            // 세로 신호등 클릭 위치
+            const vLightX = CENTER - ROAD_WIDTH / 2 - 20;
+            const vLightY = CENTER - STOP_LINE - 20;
+
+            // 가로 신호 클릭 체크
+            if (Math.hypot(clickX - hLightX, clickY - hLightY) < 20) {
+                lights.horizontal = !lights.horizontal;
+            }
+
+            // 세로 신호 클릭 체크
+            if (Math.hypot(clickX - vLightX, clickY - vLightY) < 20) {
+                lights.vertical = !lights.vertical;
+            }
+        });
+
+        initGame();
+    </script>
+</body>
+</html>

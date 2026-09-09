@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5x5 빙고 게임</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .status-container {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .bingo-board {
+            display: grid;
+            grid-template-columns: repeat(5, 70px);
+            grid-template-rows: repeat(5, 70px);
+            gap: 8px;
+            background-color: #2c3e50;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .cell {
+            background-color: #ffffff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .cell:hover {
+            background-color: #e8f4f8;
+            transform: scale(1.02);
+        }
+
+        .cell.marked {
+            background-color: #e74c3c;
+            color: white;
+            text-decoration: line-through;
+        }
+
+        .controls {
+            margin-top: 25px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            background-color: #3498db;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎮 5x5 빙고 게임</h1>
+    
+    <div class="status-container">
+        완성된 줄 수: <span id="bingo-count" style="color: #e74c3c;">0</span> / 5
+    </div>
+
+    <div class="bingo-board" id="board"></div>
+
+    <div class="controls">
+        <button onclick="resetGame()">게임 재시작</button>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 5;
+        let boardState = [];
+        let markedState = [];
+
+        // 1~25 숫자를 무작위로 섞는 함수
+        function generateRandomNumbers() {
+            const numbers = Array.from({ length: 25 }, (_, i) => i + 1);
+            for (let i = numbers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+            }
+            return numbers;
+        }
+
+        // 게임 초기화 함수
+        function initGame() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            
+            const randomNumbers = generateRandomNumbers();
+            boardState = [];
+            markedState = Array(25).fill(false);
+
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                boardState.push(randomNumbers.slice(i * BOARD_SIZE, (i + 1) * BOARD_SIZE));
+            }
+
+            // 셀 생성
+            for (let i = 0; i < 25; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.innerText = randomNumbers[i];
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => toggleCell(cell, i));
+                boardElement.appendChild(cell);
+            }
+
+            updateBingoCount();
+        }
+
+        // 셀 클릭 이벤트 처리
+        function toggleCell(cellElement, index) {
+            markedState[index] = !markedState[index];
+            cellElement.classList.toggle('marked');
+            checkBingo();
+        }
+
+        // 빙고 줄 수 체크 함수
+        function checkBingo() {
+            let bingoLines = 0;
+
+            // 1. 가로 줄 체크
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                let rowComplete = true;
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (!markedState[r * BOARD_SIZE + c]) {
+                        rowComplete = false;
+                        break;
+                    }
+                }
+                if (rowComplete) bingoLines++;
+            }
+
+            // 2. 세로 줄 체크
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                let colComplete = true;
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    if (!markedState[r * BOARD_SIZE + c]) {
+                        colComplete = false;
+                        break;
+                    }
+                }
+                if (colComplete) bingoLines++;
+            }
+
+            // 3. 대각선 (\) 체크
+            let diag1Complete = true;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                if (!markedState[i * BOARD_SIZE + i]) {
+                    diag1Complete = false;
+                    break;
+                }
+            }
+            if (diag1Complete) bingoLines++;
+
+            // 4. 대각선 (/) 체크
+            let diag2Complete = true;
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                if (!markedState[i * BOARD_SIZE + (BOARD_SIZE - 1 - i)]) {
+                    diag2Complete = false;
+                    break;
+                }
+            }
+            if (diag2Complete) bingoLines++;
+
+            updateBingoCount(bingoLines);
+
+            // 승리 조건 처리
+            if (bingoLines >= 5) {
+                setTimeout(() => {
+                    alert('🎉 축하합니다! 5빙고 달성으로 승리하셨습니다!');
+                }, 100);
+            }
+        }
+
+        // 빙고 개수 표시 업데이트
+        function updateBingoCount(count = 0) {
+            document.getElementById('bingo-count').innerText = count;
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            initGame();
+        }
+
+        // 페이지 로드 시 게임 시작
+        window.onload = initGame;
+    </script>
+</body>
+</html>

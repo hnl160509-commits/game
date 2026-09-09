@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>주사위 3개 게임</title>
+<style>
+*{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#111827,#312e81);color:white;display:flex;align-items:center;justify-content:center}
+.game{width:min(92vw,700px);padding:36px 24px;text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:28px;box-shadow:0 20px 60px rgba(0,0,0,.35);backdrop-filter:blur(12px)}
+h1{margin:0 0 8px;font-size:clamp(30px,7vw,52px)} .sub{opacity:.75;margin-bottom:30px}
+.dice-wrap{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:20px 0 28px}
+.die{width:125px;height:125px;background:#fff;color:#111827;border-radius:20px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:18px;box-shadow:0 10px 25px rgba(0,0,0,.3);transition:transform .15s}
+.pip{width:20px;height:20px;background:#111827;border-radius:50%;align-self:center;justify-self:center}
+.empty{visibility:hidden}.rolling{animation:shake .5s ease-in-out infinite}@keyframes shake{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(-8deg) scale(1.05)}75%{transform:rotate(8deg) scale(1.05)}}
+button{border:0;border-radius:14px;padding:15px 34px;font-size:20px;font-weight:800;background:#fbbf24;color:#111827;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.25)}button:hover{transform:translateY(-2px)}button:disabled{opacity:.6;cursor:wait}
+.result{font-size:24px;font-weight:700;margin-top:22px}.score{font-size:16px;opacity:.8;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="game">
+  <h1>🎲 주사위 3개 게임</h1>
+  <div class="sub">버튼을 눌러 주사위 3개를 굴려보세요!</div>
+  <div class="dice-wrap">
+    <div class="die" id="d1"></div><div class="die" id="d2"></div><div class="die" id="d3"></div>
+  </div>
+  <button id="roll">🎲 굴리기</button>
+  <div class="result" id="result">행운을 시험해보세요!</div>
+  <div class="score" id="score">최고 점수: 0</div>
+</div>
+<script>
+const faces={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const dice=[d1,d2,d3]; let best=0;
+function draw(el,n){
+  el.innerHTML='';
+  for(let i=0;i<9;i++){let s=document.createElement('span');s.className='pip'+(faces[n].includes(i)?'':' empty');el.appendChild(s)}
+}
+dice.forEach((d,i)=>draw(d, i+1));
+roll.onclick=()=>{
+  roll.disabled=true; dice.forEach(d=>d.classList.add('rolling'));
+  let ticks=0;
+  const timer=setInterval(()=>{
+    dice.forEach(d=>draw(d,Math.floor(Math.random()*6)+1)); ticks++;
+    if(ticks>=8){clearInterval(timer); dice.forEach(d=>d.classList.remove('rolling'));
+      const vals=dice.map(d=>[...d.querySelectorAll('.pip')].filter(x=>!x.classList.contains('empty')).length);
+      const sum=vals.reduce((a,b)=>a+b,0); best=Math.max(best,sum);
+      result.textContent=`🎉 ${vals.join(' + ')} = ${sum}점`;
+      score.textContent=`최고 점수: ${best}`;
+      roll.disabled=false;
+    }
+  },90);
+};
+</script>
+</body>
+</html>
