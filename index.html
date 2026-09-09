@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주사위 파일 인덱스 (Dice File Index)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --accent-color: #38bdf8;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 35px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: var(--accent-color);
+            margin: 0 0 10px 0;
+        }
+
+        .header p {
+            color: var(--text-sub);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.15);
+        }
+
+        .thumb-box {
+            width: 80px;
+            height: 80px;
+            background-color: #0b0f19;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .info-box {
+            flex-grow: 1;
+        }
+
+        .tag {
+            display: inline-block;
+            background-color: #0284c7;
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+
+        .file-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+            color: #ffffff;
+        }
+
+        .file-desc {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            margin: 0;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🎲 주사위 파일 인덱스 (Dice Index)</h1>
+            <p>목록의 주사위 HTML 파일을 빠르게 미리보고 바로 이동할 수 있습니다.</p>
+        </div>
+
+        <div class="grid">
+            <!-- 01_dice -->
+            <a href="01_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="12" fill="#ef4444"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">Single Roll</span>
+                    <h2 class="file-name">01_dice.html</h2>
+                    <p class="file-desc">기본 주사위 굴리기 모듈 (주사위 1개)</p>
+                </div>
+            </a>
+
+            <!-- 02_dice -->
+            <a href="02_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="30" cy="30" r="10" fill="#1e293b"/>
+                        <circle cx="70" cy="70" r="10" fill="#1e293b"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">Double Roll</span>
+                    <h2 class="file-name">02_dice.html</h2>
+                    <p class="file-desc">두 개의 주사위 동시 굴리기 모듈</p>
+                </div>
+            </a>
+
+            <!-- 03_dice -->
+            <a href="03_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="25" cy="25" r="9" fill="#1e293b"/>
+                        <circle cx="50" cy="50" r="9" fill="#1e293b"/>
+                        <circle cx="75" cy="75" r="9" fill="#1e293b"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">3D Animation</span>
+                    <h2 class="file-name">03_dice.html</h2>
+                    <p class="file-desc">3D 입체 큐브 회전 애니메이션 모듈</p>
+                </div>
+            </a>
+
+            <!-- 04_dice -->
+            <a href="04_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="30" cy="30" r="9" fill="#1e293b"/>
+                        <circle cx="70" cy="30" r="9" fill="#1e293b"/>
+                        <circle cx="30" cy="70" r="9" fill="#1e293b"/>
+                        <circle cx="70" cy="70" r="9" fill="#1e293b"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">Board Game</span>
+                    <h2 class="file-name">04_dice.html</h2>
+                    <p class="file-desc">주사위 눈금 이동 보드게임 시뮬레이터</p>
+                </div>
+            </a>
+
+            <!-- 05_dice -->
+            <a href="05_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="25" cy="25" r="8" fill="#1e293b"/>
+                        <circle cx="75" cy="25" r="8" fill="#1e293b"/>
+                        <circle cx="50" cy="50" r="8" fill="#ef4444"/>
+                        <circle cx="25" cy="75" r="8" fill="#1e293b"/>
+                        <circle cx="75" cy="75" r="8" fill="#1e293b"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">Betting Game</span>
+                    <h2 class="file-name">05_dice.html</h2>
+                    <p class="file-desc">숫자 맞추기 주사위 베팅 게임</p>
+                </div>
+            </a>
+
+            <!-- 06_dice -->
+            <a href="06_dice.html" class="card">
+                <div class="thumb-box">
+                    <svg width="50" height="50" viewBox="0 0 100 100">
+                        <rect x="5" y="5" width="90" height="90" rx="18" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="4"/>
+                        <circle cx="30" cy="20" r="8" fill="#1e293b"/>
+                        <circle cx="70" cy="20" r="8" fill="#1e293b"/>
+                        <circle cx="30" cy="50" r="8" fill="#1e293b"/>
+                        <circle cx="70" cy="50" r="8" fill="#1e293b"/>
+                        <circle cx="30" cy="80" r="8" fill="#1e293b"/>
+                        <circle cx="70" cy="80" r="8" fill="#1e293b"/>
+                    </svg>
+                </div>
+                <div class="info-box">
+                    <span class="tag">Multiplayer</span>
+                    <h2 class="file-name">06_dice.html</h2>
+                    <p class="file-desc">2인 턴제 주사위 멀티 대결 모듈</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
